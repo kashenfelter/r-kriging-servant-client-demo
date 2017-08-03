@@ -6,7 +6,7 @@
 module Demo 
   ( prodMain 
   ) where
-import Lib
+import FreeSketch 
 import           Yesod hiding (get)
 import Options.Applicative
 import Data.Semigroup ((<>))
