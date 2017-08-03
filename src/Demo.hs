@@ -35,13 +35,13 @@ mkYesod "Demo" [parseRoutes|
 instance Yesod Demo
 
 getP5R :: Handler ()
-getP5R = sendFile "text/javascript" "js/p5.min.js"
+getP5R = sendFile "text/javascript" "thirdparty/p5.min.js"
 
 getP5domR :: Handler ()
-getP5domR = sendFile "text/javascript" "js/p5dom.js"
+getP5domR = sendFile "text/javascript" "thirdparty/p5dom.js"
 
 getJQueryR :: Handler ()
-getJQueryR = sendFile "text/javascript" "js/jquery.min.js"
+getJQueryR = sendFile "text/javascript" "thirdparty/jquery.min.js"
 
 getPictureR :: Handler ()
 getPictureR = sendFile "image/jpeg" "pictures/computerhammer.png"
