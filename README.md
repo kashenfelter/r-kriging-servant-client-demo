@@ -11,4 +11,4 @@ Each RGB channel is sampled randomly (by pressing r,g,b keys respectively to sta
 sample sent to the corresponding r-kriging-servant server. The kriging servant fits a kriging model and returns
 a prediction map which is plotted below. The RGB channels are summed and plotted together underneath the original image.
 
-!(demo)[/screenshots/computerhammer-kriging.jpg]
+![demo](/screenshots/computerhammer-kriging.jpg)
