@@ -7,7 +7,7 @@ module Demo
   ( prodMain 
   ) where
 import FreeSketch 
-import           Yesod hiding (get)
+import Yesod hiding (get)
 import Options.Applicative
 import Data.Semigroup ((<>))
 import Control.Monad (join)
@@ -27,31 +27,39 @@ data Demo =
 mkYesod "Demo" [parseRoutes|
 / HomeR GET
 /p5.js P5R GET
+/r-kriging-servant-client-demo/p5.js SubP5R GET
 /p5dom.js P5domR GET
+/r-kriging-servant-client-demo/p5dom.js SubP5domR GET
 /jquery.js JQueryR GET
+/r-kriging-servant-client-demo/jquery.js SubJQueryR GET
 /picture.jpg PictureR GET
+/r-kriging-servant-client-demo/picture.jpg SubPictureR GET
 |]
 
 instance Yesod Demo
 
 getP5R :: Handler ()
 getP5R = sendFile "text/javascript" "thirdparty/p5.min.js"
+getSubP5R = getP5R
 
 getP5domR :: Handler ()
 getP5domR = sendFile "text/javascript" "thirdparty/p5dom.js"
+getSubP5domR = getP5domR
 
 getJQueryR :: Handler ()
 getJQueryR = sendFile "text/javascript" "thirdparty/jquery.min.js"
+getSubJQueryR = getJQueryR
 
 getPictureR :: Handler ()
 getPictureR = sendFile "image/jpeg" "pictures/computerhammer.png"
+getSubPictureR = getPictureR
 
 getHomeR :: Handler Html
 getHomeR = defaultLayout $ do
   setTitle "Demo+"
-  addScript P5R
-  addScript P5domR
-  addScript JQueryR
+  addScript SubP5R
+  addScript SubP5domR
+  addScript SubJQueryR
   y <- getYesod
   let endpoints = Prelude.map local [redPort y, greenPort y, bluePort y]
   sketch $ demoFreeSketchP5 endpoints
@@ -98,7 +106,7 @@ doKriging api generate sample color pixels = do
 
 originalImage :: WriterT (Image, Canvas, Pixels, Pixels) (FreeSketch Demo) (P5 Demo)
 originalImage = do
-  (preload, image) <- lift $ loadImage PictureR
+  (preload, image) <- lift $ loadImage SubPictureR
   (tile, canvas) <- lift $ tileCanvasByImage (0, 0) image 
   (storeKriging, krigingPixels) <- lift $ storePixels ["red", "green", "blue"]
   draw <- lift $ drawImage image
