@@ -3,9 +3,7 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE DeriveFunctor         #-}
-module Demo 
-  ( prodMain 
-  ) where
+module Demo where
 import FreeSketch 
 import Yesod hiding (get)
 import Options.Applicative
