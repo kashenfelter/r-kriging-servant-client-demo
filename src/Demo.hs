@@ -13,6 +13,7 @@ import Control.Monad.Trans.State (StateT, get, evalStateT)
 import Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import Control.Monad.Trans.Writer (WriterT, tell, runWriterT)
 import Data.Text
+import Kriging.Client
 
 
 data Demo =
@@ -25,6 +26,12 @@ data Demo =
 mkYesod "Demo" [parseRoutes|
 / HomeR GET
 /p5.js P5R GET
+/red RedKrigingR POST
+/r-kriging-servant-client-demo/red SubRedKrigingR POST
+/green GreenKrigingR POST
+/r-kriging-servant-client-demo/green SubGreenKrigingR POST
+/blue BlueKrigingR POST
+/r-kriging-servant-client-demo/blue SubBlueKrigingR POST
 /r-kriging-servant-client-demo/p5.js SubP5R GET
 /p5dom.js P5domR GET
 /r-kriging-servant-client-demo/p5dom.js SubP5domR GET
@@ -35,6 +42,38 @@ mkYesod "Demo" [parseRoutes|
 |]
 
 instance Yesod Demo
+
+postSubRedKrigingR = postRedKrigingR
+postSubGreenKrigingR = postGreenKrigingR
+postSubBlueKrigingR = postBlueKrigingR
+
+postRedKrigingR :: Handler Value
+postRedKrigingR = do
+  kd <- requireJsonBody
+  y <- getYesod
+  f <- liftIO $ runLocalKriging (redPort y) "" kd
+  case f of
+    Right fit -> returnJson fit
+    _ -> notFound 
+
+postGreenKrigingR :: Handler Value
+postGreenKrigingR = do
+  kd <- requireJsonBody
+  y <- getYesod
+  f <- liftIO $ runLocalKriging (greenPort y) "" kd
+  case f of
+    Right fit -> returnJson fit
+    _ -> notFound 
+
+postBlueKrigingR :: Handler Value
+postBlueKrigingR = do
+  kd <- requireJsonBody
+  y <- getYesod
+  f <- liftIO $ runLocalKriging (bluePort y) "" kd
+  case f of
+    Right fit -> returnJson fit
+    _ -> notFound 
+
 
 getP5R :: Handler ()
 getP5R = sendFile "text/javascript" "thirdparty/p5.min.js"
@@ -59,14 +98,14 @@ getHomeR = defaultLayout $ do
   addScript SubP5domR
   addScript SubJQueryR
   y <- getYesod
-  let endpoints = Prelude.map local [redPort y, greenPort y, bluePort y]
+  render <- getUrlRender
+  let endpoints = Prelude.map render [SubRedKrigingR, SubGreenKrigingR, SubBlueKrigingR]
   sketch $ demoFreeSketchP5 endpoints
   toWidget [lucius|
     body {
       margin: 0px;
     }
-  |]
-  where local p = pack $ "http://localhost:" ++ show p ++ "/kriging"
+  |] 
 
 demoFreeSketchP5 :: [APIEndpoint] -> FreeSketch Demo ()
 demoFreeSketchP5 endpoints = do
