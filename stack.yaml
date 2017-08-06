@@ -43,8 +43,7 @@ packages:
   extra-dep: true
 - location:
     git: git@github.com:fraser-dunlop/FreeSketch.git
-    commit: c5cf94aac8feb78d52e24d5e38ba492b997576cb  
-
+    commit: 229878ca015b3affedad12263e2388a91341286c
   extra-dep: true
 - location:
     git:  git@github.com:fraser-dunlop/vertex-tagger
