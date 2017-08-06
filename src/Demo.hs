@@ -106,6 +106,9 @@ getHomeR = defaultLayout $ do
   render <- getUrlRender
   let endpoints = Prelude.map render [SubRedKrigingR, SubGreenKrigingR, SubBlueKrigingR]
   sketch $ demoFreeSketchP5 endpoints
+  [whamlet|
+    <p>r, g, b keys initiate sampling and interpolation of r, g, b channels
+  |]
   toWidget [lucius|
     body {
       margin: 0px;
