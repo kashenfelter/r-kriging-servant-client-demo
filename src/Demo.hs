@@ -14,9 +14,9 @@ import Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import Control.Monad.Trans.Writer (WriterT, tell, runWriterT)
 import Data.Text
 import Kriging.Client
-import Data.Random.Source.DevRandom
-import Data.Random.RVar
-import Data.Random.Extras
+import VertexTagger.Data
+import VertexTagger.Test.Generator 
+import Test.QuickCheck
 
 data Demo =
   Demo {
@@ -91,11 +91,8 @@ getSubJQueryR = getJQueryR
 
 getPictureR :: Handler ()
 getPictureR = do
-  catpic <- liftIO $ runRVar (choice ["displeased-cat.jpg"
-                                     ,"coughing-cat.jpg"
-                                     ,"couch-cat.jpg"
-                                     ,"pillow-cat.jpg"]) DevRandom :: Handler String
-  sendFile "image/jpeg" $ "catpictures/" ++ catpic 
+  catpic <- liftIO $ generate (arbitrary :: Gen Tag) 
+  sendFile "image/jpeg" $ "catpictures/" ++ (unpack catpic) 
 
 getSubPictureR = getPictureR
 
