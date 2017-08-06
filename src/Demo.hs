@@ -14,7 +14,9 @@ import Control.Monad.Trans.Reader (ReaderT, ask, runReaderT)
 import Control.Monad.Trans.Writer (WriterT, tell, runWriterT)
 import Data.Text
 import Kriging.Client
-
+import Data.Random.Source.DevRandom
+import Data.Random.RVar
+import Data.Random.Extras
 
 data Demo =
   Demo {
@@ -88,7 +90,13 @@ getJQueryR = sendFile "text/javascript" "thirdparty/jquery.min.js"
 getSubJQueryR = getJQueryR
 
 getPictureR :: Handler ()
-getPictureR = sendFile "image/jpeg" "pictures/computerhammer.png"
+getPictureR = do
+  catpic <- liftIO $ runRVar (choice ["displeased-cat.jpg"
+                                     ,"coughing-cat.jpg"
+                                     ,"couch-cat.jpg"
+                                     ,"pillow-cat.jpg"]) DevRandom :: Handler String
+  sendFile "image/jpeg" $ "catpictures/" ++ catpic 
+
 getSubPictureR = getPictureR
 
 getHomeR :: Handler Html

@@ -26,6 +26,9 @@ library
                      , transformers
                      , text
                      , r-kriging-servant
+                     , random-fu
+                     , random-extras
+                     , random-source
   default-language:    Haskell2010
 
 executable kriging-colors-demo 

@@ -51,6 +51,7 @@ extra-deps:
 - r-kriging-servant-0.1.0.0
 - normaldistribution-1.1.0.3
 - plotlyhs-0.2
+- random-extras-0.19
 # Override default flag values for local packages and extra-deps
 flags: {}
 
