@@ -37,9 +37,9 @@ resolver: lts-8.20
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
-- location:
-    git: git@github.com:fraser-dunlop/FreeSketch.git
-    commit: c8d4d95f3f46822b01493726dd139aa823dcb9be
+- location: ../FreeSketch
+        #    git: git@github.com:fraser-dunlop/FreeSketch.git
+        #    commit: c8d4d95f3f46822b01493726dd139aa823dcb9be
   extra-dep: true
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)

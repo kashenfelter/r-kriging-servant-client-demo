@@ -3,9 +3,7 @@
 {-# LANGUAGE TemplateHaskell       #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE DeriveFunctor         #-}
-module Demo 
-  ( prodMain 
-  ) where
+module Demo where
 import FreeSketch 
 import           Yesod hiding (get)
 import Options.Applicative
@@ -26,22 +24,13 @@ data Demo =
 
 mkYesod "Demo" [parseRoutes|
 / HomeR GET
-/p5.js P5R GET
-/p5dom.js P5domR GET
-/jquery.js JQueryR GET
 /picture.jpg PictureR GET
+/r-kriging-servant-client-demo/picture.jpg ShimPictureR GET
 |]
 
 instance Yesod Demo
 
-getP5R :: Handler ()
-getP5R = sendFile "text/javascript" "thirdparty/p5.min.js"
-
-getP5domR :: Handler ()
-getP5domR = sendFile "text/javascript" "thirdparty/p5dom.js"
-
-getJQueryR :: Handler ()
-getJQueryR = sendFile "text/javascript" "thirdparty/jquery.min.js"
+getShimPictureR = getPictureR
 
 getPictureR :: Handler ()
 getPictureR = sendFile "image/jpeg" "pictures/computerhammer.png"
@@ -49,12 +38,12 @@ getPictureR = sendFile "image/jpeg" "pictures/computerhammer.png"
 getHomeR :: Handler Html
 getHomeR = defaultLayout $ do
   setTitle "Demo+"
-  addScript P5R
-  addScript P5domR
-  addScript JQueryR
+  addScriptRemote "https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.11/p5.js"
+  addScriptRemote "https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.11/addons/p5.dom.js"
+  addScriptRemote "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"
   y <- getYesod
   let endpoints = Prelude.map local [redPort y, greenPort y, bluePort y]
-  sketch $ demoFreeSketchP5 endpoints
+  sketchInSpace "krigingDemo" $ demoFreeSketchP5 endpoints
   toWidget [lucius|
     body {
       margin: 0px;
@@ -64,15 +53,13 @@ getHomeR = defaultLayout $ do
 
 demoFreeSketchP5 :: [APIEndpoint] -> FreeSketch Demo ()
 demoFreeSketchP5 endpoints = do
-  (p5_0_0, (image, canvas_0_0, krigingPixels, imagePixels)) <- runWriterT originalImage
-  (kriging_p5s, _) <- runReaderT (runWriterT krigingChannels) (krigingPixels, image)
+  ((p5_0_0, sem_0), (image, canvas_0_0, krigingPixels, imagePixels)) <- runWriterT originalImage
+  (kriging_p5s, _) <- runReaderT (runWriterT (krigingChannels sem_0)) (krigingPixels, image)
   s <- mapM (uniformPixelSampleGenerator imagePixels) ["red", "green", "blue"] 
   let (generators, samples) = unzip s 
-  (image_p5s, _) <- runReaderT (runWriterT (imageChannels samples)) (imagePixels, image)
+  (image_p5s, _) <- runReaderT (runWriterT (imageChannels sem_0 samples)) (imagePixels, image)
   keys <- attachKeys endpoints generators samples ["red", "green", "blue"] krigingPixels 
-  (p5_0_0_ident, mainLoaded) <- sketchP5 "true" (p5_0_0 { keyTyped' = pure keys })
-  mapM (sketchP5 mainLoaded) image_p5s
-  mapM (sketchP5 mainLoaded) kriging_p5s
+  p5Instance Nothing Nothing Nothing (Just keys) [sem_0]
   return ()
   where
     attachKeys :: [APIEndpoint] -> [Action] -> [SamplePoints] -> [Color] -> Pixels -> FreeSketch Demo Action
@@ -83,52 +70,46 @@ demoFreeSketchP5 endpoints = do
       kg <- keyTyped 'g' greenKrige
       blueKrige <- doKriging (endpoints!!2) (generators!!2) (samples!!2) (colors!!2) pixels
       kb <- keyTyped 'b' blueKrige
-      rg <- sketchSequence kr kg
-      sketchSequence rg kb
-
-       
+      sketchSequence [Just kr, Just kg, Just kb]
 
 doKriging :: APIEndpoint -> Action -> SamplePoints -> Color -> Pixels -> FreeSketch Demo Action
 doKriging api generate sample color pixels = do
   send <- samplePointsToJSON sample
-  gensend <- sketchSequence generate send
+  gensend <- sketchSequence [Just generate, Just send]
   receive <- smoothPredictionsOverPixels color pixels
   (ajax, _) <- ajaxBlockingEndlessRetry api gensend receive
   return ajax
 
-originalImage :: WriterT (Image, Canvas, Pixels, Pixels) (FreeSketch Demo) (P5 Demo)
+originalImage :: WriterT (Image, Canvas, Pixels, Pixels) (FreeSketch Demo) (Action, LoadedSemaphore)
 originalImage = do
-  (preload, image) <- lift $ loadImage PictureR
+  (preload, image) <- lift $ loadImage ShimPictureR
   (tile, canvas) <- lift $ tileCanvasByImage (0, 0) image 
   (storeKriging, krigingPixels) <- lift $ storePixels ["red", "green", "blue"]
   draw <- lift $ drawImage image
   (storeImage, imagePixels) <- lift $ storePixels ["red", "green", "blue"]
-  setup <- lift $ sketchSequence <$> (sketchSequence tile storeKriging) <*> (sketchSequence draw storeImage)
+  setup <- lift $ sketchSequence [Just tile, Just storeKriging, Just draw, Just storeImage]
   tell (image, canvas, krigingPixels, imagePixels)
-  return $ P5 (pure preload) setup void void
+  lift $ p5Instance (Just preload) (Just setup) Nothing Nothing ["true"]
 
-imageChannels :: [SamplePoints] -> WriterT [Canvas] (ReaderT (Pixels, Image) (FreeSketch Demo)) [P5 Demo]
-imageChannels samples = do
+imageChannels :: LoadSemaphore -> [SamplePoints] -> WriterT [Canvas] (ReaderT (Pixels, Image) (FreeSketch Demo)) [(Action, LoadedSemaphore)]
+imageChannels sem samples = do
   let rgb = Prelude.drop 1 channels
+  dpnts <- lift $ lift $ mapM drawSamplePoints samples
+  let rgbAndPoints = Prelude.zip rgb dpnts
   (imagePixels, image) <- lift ask
-  x <- lift $ lift $ mapM (\colors -> runReaderT (runWriterT (pixelsByColors colors 0)) (imagePixels, image)) rgb 
+  x <- lift $ lift $ mapM (\(colors, pts) -> runReaderT (runWriterT (pixelsByColors sem colors 0 (Just pts))) (imagePixels, image)) rgbAndPoints
   let (p5s, canvases) = unzip x
   tell canvases
-  lift $ lift $ sequence $ Prelude.zipWith drawSamples p5s samples
-  where
-    drawSamples :: P5 Demo -> SamplePoints -> FreeSketch Demo (P5 Demo)
-    drawSamples p5 sp = do
-      d <- draw p5
-      s <- drawSamplePoints sp
-      return $ p5 { draw = sketchSequence d s }
-
-pixelsByColors :: [Color] -> Int -> WriterT Canvas (ReaderT (Pixels, Image) (FreeSketch Demo)) (P5 Demo)
-pixelsByColors colors row = do
+  return p5s 
+ 
+pixelsByColors :: LoadSemaphore -> [Color] -> Int -> Maybe Action -> WriterT Canvas (ReaderT (Pixels, Image) (FreeSketch Demo)) (Action, LoadedSemaphore)
+pixelsByColors sem colors row followDraw = do
   (pixels, image) <- lift ask
-  let draw = drawPixels colors pixels
+  draw' <- lift $ lift $ drawPixels colors pixels
+  draw <- lift $ lift $ sketchSequence [Just draw', followDraw]
   (tile, canvas) <- lift $ lift $ tileCanvasByImage (column, row) image
   tell canvas
-  return $ P5 void (pure tile) draw void
+  lift $ lift $ p5Instance Nothing (Just tile) (Just draw) Nothing [sem] 
   where
     column = case colors of
                ["red"]   -> 1
@@ -139,10 +120,10 @@ pixelsByColors colors row = do
 channels :: [[Color]]
 channels = [["red", "green", "blue"], ["red"], ["green"], ["blue"]]
 
-krigingChannels :: WriterT [Canvas] (ReaderT (Pixels, Image) (FreeSketch Demo)) [P5 Demo]
-krigingChannels = do
+krigingChannels :: LoadSemaphore -> WriterT [Canvas] (ReaderT (Pixels, Image) (FreeSketch Demo)) [(Action, LoadedSemaphore)]
+krigingChannels sem = do
   (krigingPixels, image) <- lift ask
-  x <- lift $ lift $ mapM (\colors -> runReaderT (runWriterT (pixelsByColors colors 1)) (krigingPixels, image)) channels 
+  x <- lift $ lift $ mapM (\colors -> runReaderT (runWriterT (pixelsByColors sem colors 1 Nothing)) (krigingPixels, image)) channels 
   let (p5s, canvases) = unzip x
   tell canvases
   return p5s
