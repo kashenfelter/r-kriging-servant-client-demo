@@ -27,18 +27,30 @@ data Demo =
 
 mkYesod "Demo" [parseRoutes|
 / HomeR GET
+<<<<<<< HEAD
+/p5.js P5R GET
 /red RedKrigingR POST
 /r-kriging-servant-client-demo/red SubRedKrigingR POST
 /green GreenKrigingR POST
 /r-kriging-servant-client-demo/green SubGreenKrigingR POST
 /blue BlueKrigingR POST
 /r-kriging-servant-client-demo/blue SubBlueKrigingR POST
+/r-kriging-servant-client-demo/p5.js SubP5R GET
+/p5dom.js P5domR GET
+/r-kriging-servant-client-demo/p5dom.js SubP5domR GET
+/jquery.js JQueryR GET
+/r-kriging-servant-client-demo/jquery.js SubJQueryR GET
 /picture.jpg PictureR GET
 /r-kriging-servant-client-demo/picture.jpg SubPictureR GET
+=======
+/picture.jpg PictureR GET
+/r-kriging-servant-client-demo/picture.jpg ShimPictureR GET
+>>>>>>> undo_shimming
 |]
 
 instance Yesod Demo
 
+<<<<<<< HEAD
 postSubRedKrigingR = postRedKrigingR
 postSubGreenKrigingR = postGreenKrigingR
 postSubBlueKrigingR = postBlueKrigingR
@@ -70,6 +82,22 @@ postBlueKrigingR = do
     Right fit -> returnJson fit
     _ -> notFound 
 
+
+getP5R :: Handler ()
+getP5R = sendFile "text/javascript" "thirdparty/p5.min.js"
+getSubP5R = getP5R
+
+getP5domR :: Handler ()
+getP5domR = sendFile "text/javascript" "thirdparty/p5dom.js"
+getSubP5domR = getP5domR
+
+getJQueryR :: Handler ()
+getJQueryR = sendFile "text/javascript" "thirdparty/jquery.min.js"
+getSubJQueryR = getJQueryR
+=======
+getShimPictureR = getPictureR
+>>>>>>> undo_shimming
+
 getPictureR :: Handler ()
 getPictureR = do
   catpic <- liftIO $ generate (arbitrary :: Gen Tag) 
@@ -80,12 +108,22 @@ getSubPictureR = getPictureR
 getHomeR :: Handler Html
 getHomeR = defaultLayout $ do
   setTitle "Demo+"
+<<<<<<< HEAD
+  addScript SubP5R
+  addScript SubP5domR
+  addScript SubJQueryR
+  y <- getYesod
   render <- getUrlRender
   let endpoints = Prelude.map render [SubRedKrigingR, SubGreenKrigingR, SubBlueKrigingR]
+  sketch $ demoFreeSketchP5 endpoints
+=======
   addScriptRemote "https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.11/p5.js"
   addScriptRemote "https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.5.11/addons/p5.dom.js"
   addScriptRemote "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"
+  y <- getYesod
+  let endpoints = Prelude.map local [redPort y, greenPort y, bluePort y]
   sketchInSpace "krigingDemo" $ demoFreeSketchP5 endpoints
+>>>>>>> undo_shimming
   toWidget [lucius|
     body {
       margin: 0px;
@@ -123,7 +161,11 @@ doKriging api generate sample color pixels = do
 
 originalImage :: WriterT (Image, Canvas, Pixels, Pixels) (FreeSketch Demo) (Action, LoadedSemaphore)
 originalImage = do
+<<<<<<< HEAD
   (preload, image) <- lift $ loadImage SubPictureR
+=======
+  (preload, image) <- lift $ loadImage ShimPictureR
+>>>>>>> undo_shimming
   (tile, canvas) <- lift $ tileCanvasByImage (0, 0) image 
   (storeKriging, krigingPixels) <- lift $ storePixels ["red", "green", "blue"]
   draw <- lift $ drawImage image
